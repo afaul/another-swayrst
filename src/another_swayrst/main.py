@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import pathlib
@@ -5,6 +6,7 @@ import sys
 
 import i3ipc
 import psutil
+import pydantic.tools
 
 import another_swayrst.types as types
 
@@ -60,12 +62,21 @@ class AnotherSwayrst:
         _logger.info(f"loading profile {self.profile_name} from {self.profile_file}")
         if not self.profile_file.exists():
             _logger.critical(
-                f"profile file: {self.profile_file} doesn't exists. -> Ending"
+                f"profile file: {self.profile_file} doesn't exists. -> Exiting"
             )
             sys.exit(1001)
+        with self.profile_file.open("r") as FILE:
+            restore_tree_json = json.load(FILE)
+        self.restore_tree: types.Tree = pydantic.tools.parse_obj_as(
+            types.Tree, restore_tree_json
+        )
+        print()
 
     def save(self) -> None:
         _logger.info(f"Saving profile {self.profile_name} to {self.profile_file}")
+        if self.profile_file is None:
+            _logger.critical("no profile set -> Exiting")
+            sys.exit(1002)
         if self.profile_file.exists():
             _logger.warning(
                 f"Profile {self.profile_name} already exists -> overwriting {self.profile_file}"
