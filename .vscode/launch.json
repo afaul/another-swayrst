@@ -1,0 +1,34 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "save profile",
+            "type": "python",
+            "request": "launch",
+            "program": "src/another_swayrst/cli.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["save", "test_profile"]
+        },
+        {
+            "name": "load profile",
+            "type": "python",
+            "request": "launch",
+            "program": "src/another_swayrst/cli.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["load", "test_profile"]
+        }
+    ]
+}

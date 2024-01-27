@@ -10,6 +10,7 @@ authors = [
 ]
 dependencies = [
     "click>=8.1.7",
+    "i3ipc>=2.2.1",
 ]
 requires-python = ">=3.11"
 readme = "README.md"
@@ -19,3 +20,5 @@ license = {text = "GPL3"}
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
+[project.scripts]
+another-swayrst = "another_swayrst.cli:main"
