@@ -1,0 +1,21 @@
+[tool.pdm]
+distribution = true
+
+[project]
+name = "another-swayrst"
+version = "0.0.1"
+description = "A tool to restore window layout in swaywm"
+authors = [
+    {name = "Alexander Faul", email = "kontakt-another-swayrst@afaul.de"},
+]
+dependencies = [
+    "click>=8.1.7",
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "GPL3"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
