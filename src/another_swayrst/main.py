@@ -4,6 +4,9 @@ import pathlib
 import sys
 
 import i3ipc
+import psutil
+
+import another_swayrst.types as types
 
 _logger = logging.getLogger(__name__)
 
@@ -67,3 +70,60 @@ class AnotherSwayrst:
             _logger.warning(
                 f"Profile {self.profile_name} already exists -> overwriting {self.profile_file}"
             )
+        current_tree = self.get_current_tree()
+        with self.profile_file.open("w") as FILE:
+            FILE.write(current_tree.model_dump_json(indent=2))
+
+    def __parse_tree_container_elements(
+        self, nodes
+    ) -> list[types.Container | types.AppContainer]:
+        return_element: list[types.Container | types.AppContainer] = []
+        for node in nodes:
+            if node["type"] != "con":
+                _logger.warning(f"Unexpected node type found: {node['type']}")
+            if len(node["nodes"]) == 0:
+                command = psutil.Process(node["pid"]).cmdline()
+                container = types.AppContainer(
+                    id=node["id"], command=command, layout=node["layout"]
+                )
+            else:
+                subcontainer: list[
+                    types.Container | types.AppContainer
+                ] = self.__parse_tree_container_elements(node["nodes"])
+                container = types.Container(
+                    id=node["id"], sub_containers=subcontainer, layout=node["layout"]
+                )
+            return_element.append(container)
+        return return_element
+
+    def __parse_tree_workspace_elements(self, nodes) -> list[types.Workspace]:
+        return_element: list[types.Workspace] = []
+        for node in nodes:
+            if node["type"] != "workspace":
+                _logger.warning(f"Unexpected node type found: {node['type']}")
+            x = self.__parse_tree_container_elements(node["nodes"])
+            if len(x) == 0:
+                _logger.warning("Workspace without apps found")
+            workspace = types.Workspace(id=node["id"], name=node["name"], containers=x)
+            return_element.append(workspace)
+        return return_element
+
+    def __parse_tree_output_elements(self, nodes) -> list[types.Output]:
+        return_element: list[types.Output] = []
+        for node in nodes:
+            if node["name"] != "__i3":
+                if node["type"] != "output":
+                    _logger.warning(f"Unexpected node type found: {node['type']}")
+                x = self.__parse_tree_workspace_elements(node["nodes"])
+                output = types.Output(id=node["id"], name=node["name"], workspaces=x)
+                return_element.append(output)
+        return return_element
+
+    def get_current_tree(self) -> types.Tree:
+        tree = self.i3ipc.get_tree()
+        tree_data = tree.ipc_data
+
+        list_of_outputs: list[types.Output] = self.__parse_tree_output_elements(
+            tree_data["nodes"]
+        )
+        return types.Tree(outputs=list_of_outputs)

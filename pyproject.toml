@@ -11,6 +11,8 @@ authors = [
 dependencies = [
     "click>=8.1.7",
     "i3ipc>=2.2.1",
+    "psutil>=5.9.8",
+    "pydantic>=2.5.3",
 ]
 requires-python = ">=3.11"
 readme = "README.md"
