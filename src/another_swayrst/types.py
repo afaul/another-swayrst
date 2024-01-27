@@ -19,7 +19,7 @@ class AppContainer(TreeElement):
 class Container(TreeElement):
     """A container which contains multiple other Container and AppContainer"""
 
-    sub_containers: list["Container| AppContainer"] | None
+    sub_containers: list["Container| AppContainer"]
     layout: str
 
 

@@ -3,6 +3,7 @@ import logging
 import os
 import pathlib
 import sys
+import typing
 
 import i3ipc
 import psutil
@@ -70,6 +71,9 @@ class AnotherSwayrst:
         self.restore_tree: types.Tree = pydantic.tools.parse_obj_as(
             types.Tree, restore_tree_json
         )
+        self.old_map_id_app = self.get_map_of_apps(self.restore_tree)
+        x = self._get_missing_apps()
+
         print()
 
     def save(self) -> None:
@@ -138,3 +142,70 @@ class AnotherSwayrst:
             tree_data["nodes"]
         )
         return types.Tree(outputs=list_of_outputs)
+
+    def __iterate_over_containers(
+        self, containers: list[types.Container | types.AppContainer]
+    ) -> dict[int, types.AppContainer]:
+        map_id_app: dict[int, types.AppContainer] = {}
+        for container in containers:
+            if isinstance(container, types.AppContainer):
+                id = container.id
+                if id in map_id_app:
+                    _logger.warning(f"duplicate id found: {id}")
+                map_id_app[id] = container
+            elif isinstance(container, types.Container):
+                sub_maps = self.__iterate_over_containers(container.sub_containers)
+                for key, value in sub_maps.items():
+                    if key in map_id_app:
+                        _logger.warning(f"duplicate id found: {key}")
+                    map_id_app[key] = value
+
+        return map_id_app
+
+    def get_map_of_apps(self, tree: types.Tree) -> dict[int, types.AppContainer]:
+        map_id_app: dict[int, types.AppContainer] = {}
+
+        for output in tree.outputs:
+            for workspace in output.workspaces:
+                x = self.__iterate_over_containers(workspace.containers)
+                for key, value in x.items():
+                    if key in map_id_app:
+                        _logger.warning(f"duplicate id found: {key}")
+                    map_id_app[key] = value
+
+        return map_id_app
+
+    def _get_missing_apps(self) -> list[dict[str, typing.Any]]:
+        if self.old_map_id_app is None:
+            _logger.error("no map for id to apps to restore available")
+            sys.exit(1004)
+
+        old_cmds: dict[str, typing.Any] = {}
+        for value in self.old_map_id_app.values():
+            cmd = value.command
+            cmd_str = " ".join(cmd)
+            if cmd_str not in old_cmds:
+                old_cmds[cmd_str] = {"amount": 0, "cmd": cmd}
+            old_cmds[cmd_str]["amount"] += 1
+
+        new_map_id_app = self.get_map_of_apps(self.get_current_tree())
+        new_cmds: dict[str, typing.Any] = {}
+        for value in new_map_id_app.values():
+            cmd = value.command
+            cmd_str = " ".join(cmd)
+            if cmd_str not in new_cmds:
+                new_cmds[cmd_str] = {"amount": 0, "cmd": cmd}
+            new_cmds[cmd_str]["amount"] += 1
+
+        missing_apps: list[dict[str, typing.Any]] = []
+        for cmd_str, old_info in old_cmds.items():
+            old_amount = old_info["amount"]
+            if cmd_str in new_cmds:
+                new_amount = new_cmds[cmd_str]["amount"]
+                if new_amount < old_amount:
+                    missing_apps.append(
+                        {"amount": old_amount - new_amount, "cmd": old_info["cmd"]}
+                    )
+            else:
+                missing_apps.append(old_info)
+        return missing_apps
