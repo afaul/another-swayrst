@@ -2,12 +2,14 @@ import json
 import logging
 import os
 import pathlib
+import subprocess
 import sys
 import typing
 
 import i3ipc
 import psutil
 import pydantic.tools
+import yaml
 
 import another_swayrst.types as types
 
@@ -16,10 +18,20 @@ _logger = logging.getLogger(__name__)
 
 class AnotherSwayrst:
     def __init__(self) -> None:
-        self.swayrst_profile_dir: pathlib.Path = self.get_profile_dir()
+        self.config_dir, self.swayrst_profile_dir = self.get_dirs()
+        config_file = self.config_dir.joinpath("another-swayrst.conf.yaml")
+        if config_file.exists() and config_file.is_file():
+            _logger.debug(f"loading config file: {config_file}")
+            self.config = yaml.safe_load(config_file.read_text())
+        else:
+            _logger.info(f"config file: {config_file} not found")
+            self.config = {"command_translation": {}}
+            with config_file.open("w") as FILE:
+                yaml.dump(self.config, FILE)
+
         self.i3ipc: i3ipc.Connection = i3ipc.Connection()
 
-    def get_profile_dir(self) -> pathlib.Path:
+    def get_dirs(self) -> tuple[pathlib.Path, pathlib.Path]:
         home_folder = pathlib.Path.home()
         config_folder = os.environ.get(
             "XDG_CONFIG_HOME", home_folder.joinpath(".config")
@@ -51,7 +63,7 @@ class AnotherSwayrst:
                 "another-swayrst-profiles"
             )
             swayrst_profile_dir.mkdir(parents=True, exist_ok=True)
-            return swayrst_profile_dir
+            return sway_config_folder, swayrst_profile_dir
 
     def set_profile(self, profile_name: str) -> None:
         self.profile_name: str = profile_name
@@ -72,7 +84,7 @@ class AnotherSwayrst:
             types.Tree, restore_tree_json
         )
         self.old_map_id_app = self.get_map_of_apps(self.restore_tree)
-        x = self._get_missing_apps()
+        self._start_missing_apps()
 
         print()
 
@@ -209,3 +221,14 @@ class AnotherSwayrst:
             else:
                 missing_apps.append(old_info)
         return missing_apps
+
+    def _start_missing_apps(self):
+        missing_apps = self._get_missing_apps()
+        for app_info in missing_apps:
+            amount: int = app_info["amount"]
+            cmd: list[str] = app_info["cmd"]
+            for _ in range(amount):
+                if cmd[0] in self.config["command_translation"]:
+                    cmd[0] = self.config["command_translation"][cmd[0]]
+                subprocess.Popen(cmd)
+        print()
