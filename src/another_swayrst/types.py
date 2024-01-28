@@ -26,6 +26,7 @@ class Container(TreeElement):
 class Workspace(TreeElement):
     name: str
     containers: list[Container | AppContainer]
+    floating_containers: list[AppContainer | Container]
 
 
 class Output(TreeElement):

@@ -4,6 +4,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import time
 import typing
 
 import i3ipc
@@ -25,7 +26,10 @@ class AnotherSwayrst:
             self.config = yaml.safe_load(config_file.read_text())
         else:
             _logger.info(f"config file: {config_file} not found")
-            self.config = {"command_translation": {}}
+            self.config = {
+                "command_translation": {},
+                "app_start_timeout": 30,
+            }
             with config_file.open("w") as FILE:
                 yaml.dump(self.config, FILE)
 
@@ -83,9 +87,13 @@ class AnotherSwayrst:
         self.restore_tree: types.Tree = pydantic.tools.parse_obj_as(
             types.Tree, restore_tree_json
         )
-        self.old_map_id_app = self.get_map_of_apps(self.restore_tree)
+        self.old_map_id_app, self.old_map_cmd_ids = self.get_map_of_apps(
+            self.restore_tree
+        )
         self._start_missing_apps()
-
+        self._wait_until_apps_started(timeout=self.config["app_start_timeout"])
+        map_old_to_new_id = self._get_old_to_new_map()
+        self.move_all_apps_to_scratchpad()
         print()
 
     def save(self) -> None:
@@ -106,7 +114,7 @@ class AnotherSwayrst:
     ) -> list[types.Container | types.AppContainer]:
         return_element: list[types.Container | types.AppContainer] = []
         for node in nodes:
-            if node["type"] != "con":
+            if node["type"] not in ["con", "floating_con"]:
                 _logger.warning(f"Unexpected node type found: {node['type']}")
             if len(node["nodes"]) == 0:
                 command = psutil.Process(node["pid"]).cmdline()
@@ -129,21 +137,26 @@ class AnotherSwayrst:
             if node["type"] != "workspace":
                 _logger.warning(f"Unexpected node type found: {node['type']}")
             x = self.__parse_tree_container_elements(node["nodes"])
-            if len(x) == 0:
+            floating_cons = self.__parse_tree_container_elements(node["floating_nodes"])
+            if len(x) + len(floating_cons) == 0:
                 _logger.warning("Workspace without apps found")
-            workspace = types.Workspace(id=node["id"], name=node["name"], containers=x)
+            workspace = types.Workspace(
+                id=node["id"],
+                name=node["name"],
+                containers=x,
+                floating_containers=floating_cons,
+            )
             return_element.append(workspace)
         return return_element
 
     def __parse_tree_output_elements(self, nodes) -> list[types.Output]:
         return_element: list[types.Output] = []
         for node in nodes:
-            if node["name"] != "__i3":
-                if node["type"] != "output":
-                    _logger.warning(f"Unexpected node type found: {node['type']}")
-                x = self.__parse_tree_workspace_elements(node["nodes"])
-                output = types.Output(id=node["id"], name=node["name"], workspaces=x)
-                return_element.append(output)
+            if node["type"] != "output":
+                _logger.warning(f"Unexpected node type found: {node['type']}")
+            x = self.__parse_tree_workspace_elements(node["nodes"])
+            output = types.Output(id=node["id"], name=node["name"], workspaces=x)
+            return_element.append(output)
         return return_element
 
     def get_current_tree(self) -> types.Tree:
@@ -153,6 +166,7 @@ class AnotherSwayrst:
         list_of_outputs: list[types.Output] = self.__parse_tree_output_elements(
             tree_data["nodes"]
         )
+
         return types.Tree(outputs=list_of_outputs)
 
     def __iterate_over_containers(
@@ -174,8 +188,11 @@ class AnotherSwayrst:
 
         return map_id_app
 
-    def get_map_of_apps(self, tree: types.Tree) -> dict[int, types.AppContainer]:
+    def get_map_of_apps(
+        self, tree: types.Tree
+    ) -> tuple[dict[int, types.AppContainer], dict[str, list[int]]]:
         map_id_app: dict[int, types.AppContainer] = {}
+        map_commands_id: dict[str, list[int]] = {}
 
         for output in tree.outputs:
             for workspace in output.workspaces:
@@ -185,41 +202,45 @@ class AnotherSwayrst:
                         _logger.warning(f"duplicate id found: {key}")
                     map_id_app[key] = value
 
-        return map_id_app
+        for id, con in map_id_app.items():
+            cmd = con.command
+            cmd_str = " ".join(cmd)
+            if cmd_str not in map_commands_id:
+                map_commands_id[cmd_str] = []
+            map_commands_id[cmd_str].append(id)
+
+        return map_id_app, map_commands_id
 
     def _get_missing_apps(self) -> list[dict[str, typing.Any]]:
-        if self.old_map_id_app is None:
-            _logger.error("no map for id to apps to restore available")
+        if self.old_map_cmd_ids is None:
+            _logger.error("no map for cmd to ids to restore available")
             sys.exit(1004)
 
-        old_cmds: dict[str, typing.Any] = {}
-        for value in self.old_map_id_app.values():
-            cmd = value.command
-            cmd_str = " ".join(cmd)
-            if cmd_str not in old_cmds:
-                old_cmds[cmd_str] = {"amount": 0, "cmd": cmd}
-            old_cmds[cmd_str]["amount"] += 1
-
-        new_map_id_app = self.get_map_of_apps(self.get_current_tree())
-        new_cmds: dict[str, typing.Any] = {}
-        for value in new_map_id_app.values():
-            cmd = value.command
-            cmd_str = " ".join(cmd)
-            if cmd_str not in new_cmds:
-                new_cmds[cmd_str] = {"amount": 0, "cmd": cmd}
-            new_cmds[cmd_str]["amount"] += 1
+        new_map_id_app, new_map_cmd_ids = self.get_map_of_apps(self.get_current_tree())
 
         missing_apps: list[dict[str, typing.Any]] = []
-        for cmd_str, old_info in old_cmds.items():
-            old_amount = old_info["amount"]
-            if cmd_str in new_cmds:
-                new_amount = new_cmds[cmd_str]["amount"]
+        for cmd_str, old_ids in self.old_map_cmd_ids.items():
+            old_amount = len(old_ids)
+            if cmd_str in new_map_cmd_ids:
+                new_amount = len(new_map_cmd_ids[cmd_str])
                 if new_amount < old_amount:
                     missing_apps.append(
-                        {"amount": old_amount - new_amount, "cmd": old_info["cmd"]}
+                        {
+                            "amount": old_amount - new_amount,
+                            "cmd": self.old_map_id_app[
+                                self.old_map_cmd_ids[cmd_str][0]
+                            ].command,
+                        }
                     )
             else:
-                missing_apps.append(old_info)
+                missing_apps.append(
+                    {
+                        "amount": old_amount,
+                        "cmd": self.old_map_id_app[
+                            self.old_map_cmd_ids[cmd_str][0]
+                        ].command,
+                    }
+                )
         return missing_apps
 
     def _start_missing_apps(self):
@@ -230,5 +251,36 @@ class AnotherSwayrst:
             for _ in range(amount):
                 if cmd[0] in self.config["command_translation"]:
                     cmd[0] = self.config["command_translation"][cmd[0]]
-                subprocess.Popen(cmd)
-        print()
+                subprocess.Popen(cmd, cwd="~")
+
+    def _wait_until_apps_started(self, timeout: int) -> None:
+        """Wait until all missing apps are started, or timeout reached"""
+        missing_apps_count = len(self._get_missing_apps())
+        timeout_counter = 0
+        while missing_apps_count > 0 and not timeout_counter < timeout:
+            time.sleep(1)
+            timeout_counter += 1
+            missing_apps_count = len(self._get_missing_apps())
+
+        if timeout_counter >= timeout:
+            _logger.warning(f"not all missing apps started after timeout of {timeout}s")
+
+    def _get_old_to_new_map(self) -> dict[int, int]:
+        map_old_to_new_id = {}
+        new_map_id_app, new_map_cmd_ids = self.get_map_of_apps(self.get_current_tree())
+
+        for cmd, ids in self.old_map_cmd_ids.items():
+            for old_id in ids:
+                if cmd in new_map_cmd_ids:
+                    if len(new_map_cmd_ids[cmd]) > 0:
+                        new_id = new_map_cmd_ids[cmd].pop()
+                        map_old_to_new_id[old_id] = new_id
+
+        return map_old_to_new_id
+
+    def move_all_apps_to_scratchpad(self):
+        new_map_id_app, new_map_cmd_ids = self.get_map_of_apps(self.get_current_tree())
+        for id in new_map_id_app.keys():
+            app = self.i3ipc.get_tree().find_by_id(id)
+            if app is not None:
+                app.command("move scratchpad")
