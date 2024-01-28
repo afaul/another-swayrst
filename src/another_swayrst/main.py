@@ -92,8 +92,8 @@ class AnotherSwayrst:
         )
         self._start_missing_apps()
         self._wait_until_apps_started(timeout=self.config["app_start_timeout"])
-        map_old_to_new_id = self._get_old_to_new_map()
         self.move_all_apps_to_scratchpad()
+        self.recreate_workspaces()
         print()
 
     def save(self) -> None:
@@ -119,14 +119,17 @@ class AnotherSwayrst:
             if len(node["nodes"]) == 0:
                 command = psutil.Process(node["pid"]).cmdline()
                 container = types.AppContainer(
-                    id=node["id"], command=command, layout=node["layout"]
+                    id=node["id"],
+                    command=command,
                 )
             else:
                 subcontainer: list[
                     types.Container | types.AppContainer
                 ] = self.__parse_tree_container_elements(node["nodes"])
                 container = types.Container(
-                    id=node["id"], sub_containers=subcontainer, layout=node["layout"]
+                    id=node["id"],
+                    sub_containers=subcontainer,
+                    layout=node["layout"],
                 )
             return_element.append(container)
         return return_element
@@ -138,13 +141,18 @@ class AnotherSwayrst:
                 _logger.warning(f"Unexpected node type found: {node['type']}")
             x = self.__parse_tree_container_elements(node["nodes"])
             floating_cons = self.__parse_tree_container_elements(node["floating_nodes"])
-            if len(x) + len(floating_cons) == 0:
+            if len(x) + len(floating_cons) == 0 and node["name"] != "__i3_scratch":
                 _logger.warning("Workspace without apps found")
+            workspace_number = None
+            if "num" in node:
+                workspace_number = node["num"]
             workspace = types.Workspace(
                 id=node["id"],
                 name=node["name"],
                 containers=x,
                 floating_containers=floating_cons,
+                number=workspace_number,
+                layout=node["layout"],
             )
             return_element.append(workspace)
         return return_element
@@ -201,6 +209,13 @@ class AnotherSwayrst:
                     if key in map_id_app:
                         _logger.warning(f"duplicate id found: {key}")
                     map_id_app[key] = value
+                for con in workspace.floating_containers:
+                    if isinstance(con, types.AppContainer):
+                        if con.id in map_id_app:
+                            _logger.warning(f"duplicate id found: {con.id}")
+                        map_id_app[con.id] = con
+                    else:
+                        _logger.warning("other type than App in floating containers")
 
         for id, con in map_id_app.items():
             cmd = con.command
@@ -251,7 +266,7 @@ class AnotherSwayrst:
             for _ in range(amount):
                 if cmd[0] in self.config["command_translation"]:
                     cmd[0] = self.config["command_translation"][cmd[0]]
-                subprocess.Popen(cmd, cwd="~")
+                subprocess.Popen(cmd, cwd=pathlib.Path.home())
 
     def _wait_until_apps_started(self, timeout: int) -> None:
         """Wait until all missing apps are started, or timeout reached"""
@@ -284,3 +299,64 @@ class AnotherSwayrst:
             app = self.i3ipc.get_tree().find_by_id(id)
             if app is not None:
                 app.command("move scratchpad")
+
+    def recreate_workspaces(self):
+        map_old_to_new_id = self._get_old_to_new_map()
+        for output in self.restore_tree.outputs:
+            if output.name != "__i3":
+                for workspace in output.workspaces:
+                    # self.i3ipc.command(f"workspace number {workspace.number}")
+                    # for app_workspace in self.i3ipc.get_tree().workspaces():
+                    #     if app_workspace.num == workspace.number:
+                    #         app_workspace.command(f"layout {workspace.layout}")
+                    #         break
+                    last_app = None
+                    for con in workspace.containers:
+                        last_app = self.recreate_container(
+                            workspace=workspace,
+                            container=con,
+                            map_old_to_new_id=map_old_to_new_id,
+                            layout=workspace.layout,
+                            last_app=last_app,
+                        )
+                    for con in workspace.floating_containers:
+                        app = self.i3ipc.get_tree().find_by_id(con.id)
+                        if app is not None:
+                            app.command(
+                                f"move container to workspace number {workspace.number}"
+                            )
+
+    def recreate_container(
+        self,
+        workspace: types.Workspace,
+        container: types.Container | types.AppContainer,
+        map_old_to_new_id: dict[int, int],
+        layout: str,
+        last_app: i3ipc.Con | None = None,
+    ):
+        if isinstance(container, types.AppContainer):
+            new_app_id = map_old_to_new_id[container.id]
+            app = self.i3ipc.get_tree().find_by_id(new_app_id)
+            if app is not None:
+                app.command(f"move container to workspace number {workspace.number}")
+                app.command(f"floating off")
+
+                match layout:
+                    case "splitv" | "splith":
+                        app.command(f"{layout}")
+                    case "tabbed" | "stacking":
+                        app.command("split toggle")
+                        app.command(f"layout {layout}")
+                # print(layout)
+                last_app = app
+        elif isinstance(container, types.Container):
+            for con in container.sub_containers:
+                # if last_app is not None:
+                #     last_app.command(f"{layout}")
+                self.recreate_container(
+                    workspace,
+                    con,
+                    map_old_to_new_id,
+                    container.layout,
+                )
+        return last_app

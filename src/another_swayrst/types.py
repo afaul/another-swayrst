@@ -13,7 +13,6 @@ class AppContainer(TreeElement):
     """A container which represent an Application"""
 
     command: list[str]
-    layout: str
 
 
 class Container(TreeElement):
@@ -27,6 +26,8 @@ class Workspace(TreeElement):
     name: str
     containers: list[Container | AppContainer]
     floating_containers: list[AppContainer | Container]
+    number: int | None
+    layout: str
 
 
 class Output(TreeElement):
