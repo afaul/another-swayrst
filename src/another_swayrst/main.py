@@ -312,56 +312,120 @@ class AnotherSwayrst:
                     #         app_workspace.command(f"layout {workspace.layout}")
                     #         break
                     last_app = None
-                    for con in workspace.containers:
-                        last_app = self.recreate_container(
-                            workspace=workspace,
-                            container=con,
-                            map_old_to_new_id=map_old_to_new_id,
-                            layout=workspace.layout,
-                            last_app=last_app,
-                        )
-                    for con in workspace.floating_containers:
-                        new_con_id = map_old_to_new_id[con.id]
-                        app = self.i3ipc.get_tree().find_by_id(new_con_id)
-                        if app is not None:
-                            app.command(
-                                f"move container to workspace number {workspace.number}"
-                            )
+                    if workspace.number is None:
+                        _logger.warning("workspace without number found")
+                    else:
+                        for container in workspace.containers:
+                            old_id = self.__get_first_app_id(container)
+                            new_id = map_old_to_new_id[old_id]
+                            app = self.i3ipc.get_tree().find_by_id(new_id)
+                            if app is not None:
+                                self.__execute_command(
+                                    app=app,
+                                    command=f"move container to workspace number {workspace.number}",
+                                )
+                                self.__execute_command(app=app, command="floating off")
+                                self.__execute_command(
+                                    app=app, command=f"layout {workspace.layout}"
+                                )
 
-    def recreate_container(
+                        for container in workspace.containers:
+                            if isinstance(container, types.Container):
+                                self.recreate_containers(
+                                    containers=container.sub_containers,
+                                    workspace_number=workspace.number,
+                                    map_old_to_new_id=map_old_to_new_id,
+                                    layout=container.layout,
+                                )
+                        for con in workspace.floating_containers:
+                            new_con_id = map_old_to_new_id[con.id]
+                            app = self.i3ipc.get_tree().find_by_id(new_con_id)
+                            if app is not None:
+                                self.__execute_command(
+                                    app=app,
+                                    command=f"move container to workspace number {workspace.number}",
+                                )
+
+    def __get_first_app_id(
+        self, container: types.Container | types.AppContainer
+    ) -> int:
+        if isinstance(container, types.AppContainer):
+            return container.id
+        else:
+            return self.__get_first_app_id(container.sub_containers[0])
+
+    def __execute_command(self, command: str, app: i3ipc.Con | None = None) -> None:
+        con: i3ipc.Con | i3ipc.Connection = self.i3ipc
+        if app is not None:
+            con = app
+
+        ret = con.command(command)
+        if not ret[0].success:  # type: ignore
+            _logger.error(f"error while executing ipc command: {ret[0].error}")  # type: ignore
+
+    def recreate_containers(
         self,
-        workspace: types.Workspace,
-        container: types.Container | types.AppContainer,
+        containers: list[types.Container | types.AppContainer],
+        workspace_number: int,
         map_old_to_new_id: dict[int, int],
         layout: str,
-        last_app: i3ipc.Con | None = None,
     ):
-        if isinstance(container, types.AppContainer):
-            new_app_id = map_old_to_new_id[container.id]
-            app = self.i3ipc.get_tree().find_by_id(new_app_id)
+        first_app = True
+        for container in containers:
+            old_id = self.__get_first_app_id(container)
+            new_id = map_old_to_new_id[old_id]
+            app = self.i3ipc.get_tree().find_by_id(new_id)
             if app is not None:
-                app.command(f"move container to workspace number {workspace.number}")
-                app.command(f"floating off")
-                # app.command("split toggle")
-                # app.command("split toggle")
-                # app.command(f"layout {layout}")
+                if first_app:
+                    self.__execute_command(app=app, command="focus")
+                    self.__execute_command(app=app, command="split toggle")
+                    if layout == "stacked":
+                        layout = "stacking"
+                    self.__execute_command(app=app, command=f"layout {layout}")
+                    first_app = False
+                else:
+                    self.__execute_command(
+                        app=app,
+                        command=f"move container to workspace number {workspace_number}",
+                    )
+                    self.__execute_command(app=app, command="floating off")
+                    # app.command(f"layout {layout}")
 
-                match layout:
-                    case "splitv" | "splith":
-                        app.command(f"{layout}")
-                    case "tabbed" | "stacking":
-                        app.command("split toggle")
-                        app.command(f"layout {layout}")
-                # print(layout)
-                last_app = app
-        elif isinstance(container, types.Container):
-            for con in container.sub_containers:
-                # if last_app is not None:
-                #     last_app.command(f"{layout}")
-                self.recreate_container(
-                    workspace,
-                    con,
-                    map_old_to_new_id,
-                    container.layout,
+        for container in containers:
+            if isinstance(container, types.Container):
+                self.recreate_containers(
+                    containers=container.sub_containers,
+                    workspace_number=workspace_number,
+                    map_old_to_new_id=map_old_to_new_id,
+                    layout=container.layout,
                 )
-        return last_app
+
+        # if isinstance(container, types.AppContainer):
+        #     new_app_id = map_old_to_new_id[container.id]
+        #     app = self.i3ipc.get_tree().find_by_id(new_app_id)
+        #     if app is not None:
+        #         app.command(f"move container to workspace number {workspace.number}")
+        #         app.command(f"floating off")
+        #         # app.command("split toggle")
+        #         # app.command("split toggle")
+        #         # app.command(f"layout {layout}")
+
+        #         match layout:
+        #             case "splitv" | "splith":
+        #                 app.command(f"{layout}")
+        #             case "tabbed" | "stacking":
+        #                 app.command("split toggle")
+        #                 app.command(f"layout {layout}")
+        #         # print(layout)
+        #         last_app = app
+        # elif isinstance(container, types.Container):
+        #     for con in container.sub_containers:
+        #         # if last_app is not None:
+        #         #     last_app.command(f"{layout}")
+        #         self.recreate_container(
+        #             workspace,
+        #             con,
+        #             map_old_to_new_id,
+        #             container.layout,
+        #         )
+        # return last_app
