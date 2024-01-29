@@ -121,6 +121,8 @@ class AnotherSwayrst:
                 container = types.AppContainer(
                     id=node["id"],
                     command=command,
+                    width=node["window_rect"]["width"],
+                    height=node["window_rect"]["height"],
                 )
             else:
                 subcontainer: list[
@@ -141,8 +143,8 @@ class AnotherSwayrst:
                 _logger.warning(f"Unexpected node type found: {node['type']}")
             x = self.__parse_tree_container_elements(node["nodes"])
             floating_cons = self.__parse_tree_container_elements(node["floating_nodes"])
-            if len(x) + len(floating_cons) == 0 and node["name"] != "__i3_scratch":
-                _logger.warning("Workspace without apps found")
+            # if len(x) + len(floating_cons) == 0 and node["name"] != "__i3_scratch":
+            #     _logger.warning("Workspace without apps found")
             workspace_number = None
             if "num" in node:
                 workspace_number = node["num"]
@@ -344,6 +346,48 @@ class AnotherSwayrst:
                                     app=app,
                                     command=f"move container to workspace number {workspace.number}",
                                 )
+                        # resize apps
+                        self.resize_apps(workspace.containers, map_old_to_new_id)
+
+    def resize_apps(
+        self,
+        containers: list[types.Container | types.AppContainer],
+        map_old_to_new_id: dict[int, int],
+    ):
+        for container in containers:
+            if isinstance(container, types.AppContainer):
+                new_id = map_old_to_new_id[container.id]
+                new_app = self.i3ipc.get_tree().find_by_id(new_id)
+                current_height = new_app.window_rect.height  # type: ignore
+                current_width = new_app.window_rect.width  # type: ignore
+
+                if current_height < container.height:
+                    self.__execute_command(
+                        app=new_app,
+                        command=f"resize grow height {container.height - current_height}px",
+                    )
+                elif current_height > container.height:
+                    self.__execute_command(
+                        app=new_app,
+                        command=f"resize shrink height {current_height - container.height}px",
+                    )
+
+                if current_width < container.width:
+                    self.__execute_command(
+                        app=new_app,
+                        command=f"resize grow width {container.width-current_width}px",
+                    )
+                elif current_width > container.width:
+                    self.__execute_command(
+                        app=new_app,
+                        command=f"resize shrink width {current_width-container.width}px",
+                    )
+
+            elif isinstance(container, types.Container):
+                self.resize_apps(
+                    containers=container.sub_containers,
+                    map_old_to_new_id=map_old_to_new_id,
+                )
 
     def __get_first_app_id(
         self, container: types.Container | types.AppContainer

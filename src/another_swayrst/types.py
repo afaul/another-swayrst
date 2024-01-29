@@ -13,6 +13,8 @@ class AppContainer(TreeElement):
     """A container which represent an Application"""
 
     command: list[str]
+    width: int
+    height: int
 
 
 class Container(TreeElement):
