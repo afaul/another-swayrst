@@ -270,9 +270,10 @@ class AnotherSwayrst:
 
     def _wait_until_apps_started(self, timeout: int) -> None:
         """Wait until all missing apps are started, or timeout reached"""
+
         missing_apps_count = len(self._get_missing_apps())
         timeout_counter = 0
-        while missing_apps_count > 0 and not timeout_counter < timeout:
+        while missing_apps_count > 0 and timeout_counter < timeout:
             time.sleep(1)
             timeout_counter += 1
             missing_apps_count = len(self._get_missing_apps())
@@ -320,7 +321,8 @@ class AnotherSwayrst:
                             last_app=last_app,
                         )
                     for con in workspace.floating_containers:
-                        app = self.i3ipc.get_tree().find_by_id(con.id)
+                        new_con_id = map_old_to_new_id[con.id]
+                        app = self.i3ipc.get_tree().find_by_id(new_con_id)
                         if app is not None:
                             app.command(
                                 f"move container to workspace number {workspace.number}"
@@ -340,6 +342,9 @@ class AnotherSwayrst:
             if app is not None:
                 app.command(f"move container to workspace number {workspace.number}")
                 app.command(f"floating off")
+                # app.command("split toggle")
+                # app.command("split toggle")
+                # app.command(f"layout {layout}")
 
                 match layout:
                     case "splitv" | "splith":
