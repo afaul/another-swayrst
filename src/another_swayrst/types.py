@@ -9,6 +9,7 @@ class AnotherSwayrstConfig(pydantic.BaseModel):
     command_translation: dict[str, str] = {}
     app_start_timeout: int = 30
     profile_dir: pathlib.Path
+    start_missing_apps: bool = True
 
 
 class TreeElement(pydantic.BaseModel):

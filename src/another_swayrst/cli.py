@@ -54,6 +54,7 @@ def main(ctx, log_level: str, config_file):
 @click.argument("profile_name")
 def save(ctx, profile_name: str):
     """Save current window layout."""
+
     obj: another_swayrst.AnotherSwayrst = ctx.parent.params["obj"]
     obj.set_profile(profile_name)
     obj.save()
@@ -61,10 +62,18 @@ def save(ctx, profile_name: str):
 
 @main.command()
 @click.pass_context
+@click.option(
+    "--start-missing-apps/--no-start-missing-apps",
+    default=None,
+    help="Overwrite the config option to start missing apps.",
+)
 @click.argument("profile_name")
-def load(ctx, profile_name: str):
+def load(ctx, profile_name: str, start_missing_apps: bool | None):
     """Load and restore the specified profile."""
+
     obj: another_swayrst.AnotherSwayrst = ctx.parent.params["obj"]
+    if start_missing_apps is not None:
+        obj.set_config_start_missing_apps(start_missing_apps)
     obj.set_profile(profile_name)
     obj.load()
 

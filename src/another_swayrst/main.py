@@ -317,8 +317,9 @@ class AnotherSwayrst:
         self.old_map_id_app, self.old_map_cmd_ids = self.get_map_of_apps(
             self.restore_tree
         )
-        self.start_missing_apps()
-        self._wait_until_apps_started(timeout=self.config.app_start_timeout)
+        if self.config.start_missing_apps:
+            self.start_missing_apps()
+            self._wait_until_apps_started(timeout=self.config.app_start_timeout)
         self.move_all_apps_to_scratchpad()
         self.recreate_workspaces()
 
@@ -473,6 +474,9 @@ class AnotherSwayrst:
         current_tree: types.Tree = self.get_current_tree()
         with self.profile_file.open("w") as FILE:
             FILE.write(current_tree.model_dump_json(indent=2))
+
+    def set_config_start_missing_apps(self, start_missing_apps: bool) -> None:
+        self.config.start_missing_apps = start_missing_apps
 
     def set_profile(self, profile_name: str) -> None:
         """set the given profile to load/save."""
