@@ -1,6 +1,14 @@
-import typing
+import pathlib
 
 import pydantic
+
+
+class AnotherSwayrstConfig(pydantic.BaseModel):
+    """Configuration of the tool."""
+
+    command_translation: dict[str, str] = {}
+    app_start_timeout: int = 30
+    profile_dir: pathlib.Path
 
 
 class TreeElement(pydantic.BaseModel):
@@ -25,6 +33,8 @@ class Container(TreeElement):
 
 
 class Workspace(TreeElement):
+    """A representation of a workspace."""
+
     name: str
     containers: list[Container | AppContainer]
     floating_containers: list[AppContainer | Container]
@@ -33,9 +43,13 @@ class Workspace(TreeElement):
 
 
 class Output(TreeElement):
+    """A representation of an output."""
+
     name: str
     workspaces: list[Workspace]
 
 
 class Tree(pydantic.BaseModel):
+    """Root node of the tree."""
+
     outputs: list[Output]

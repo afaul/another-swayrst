@@ -23,7 +23,15 @@ _logger = logging.getLogger(__name__)
     show_default=True,
     help="Verbosity level of logging",
 )
-def main(ctx, log_level: str):
+@click.option(
+    "-c",
+    "--config-file",
+    "config_file",
+    default=None,
+    help="Config file to use (will be created if not existing)",
+    type=click.Path(dir_okay=False, resolve_path=True, path_type=pathlib.Path),
+)
+def main(ctx, log_level: str, config_file):
     log_handlers = []
     # log_stream_handler = logging.StreamHandler(sys.stderr)
     log_stream_handler = logging.StreamHandler(sys.stdout)
@@ -37,7 +45,7 @@ def main(ctx, log_level: str):
     _logger.info(
         f"another-swayrst started with log-level: {logging.getLevelName(logging.root.level) }"
     )
-    obj = another_swayrst.AnotherSwayrst()
+    obj = another_swayrst.AnotherSwayrst(config_file=config_file)
     ctx.params["obj"] = obj
 
 
@@ -62,4 +70,4 @@ def load(ctx, profile_name: str):
 
 
 if __name__ == "__main__":
-    main()
+    main(auto_envvar_prefix="ANOTHER_SWAYRST")
