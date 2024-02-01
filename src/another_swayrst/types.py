@@ -3,13 +3,22 @@ import pathlib
 import pydantic
 
 
+class AnotherSwayrstConfigStartMissingApps(pydantic.BaseModel):
+    """Configuration for the start of missing apps feature"""
+
+    active: bool = False
+    timeout: int = 30
+    command_translation: dict[str, str] = {}
+
+
 class AnotherSwayrstConfig(pydantic.BaseModel):
     """Configuration of the tool."""
 
-    command_translation: dict[str, str] = {}
-    app_start_timeout: int = 30
+    version: int = 1
     profile_dir: pathlib.Path
-    start_missing_apps: bool = True
+    start_missing_apps: AnotherSwayrstConfigStartMissingApps = (
+        AnotherSwayrstConfigStartMissingApps()
+    )
 
 
 class TreeElement(pydantic.BaseModel):

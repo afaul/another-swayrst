@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Python: Current File",
             "type": "python",
@@ -29,6 +30,15 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": ["load", "test_profile"]
+        },
+        {
+            "name": "show config",
+            "type": "python",
+            "request": "launch",
+            "program": "src/another_swayrst/cli.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["--command-translation", "A", "B", "--command-translation", "C", "D","show-config"]
         }
     ]
 }
