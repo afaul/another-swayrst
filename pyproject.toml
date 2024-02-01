@@ -1,9 +1,12 @@
 [tool.pdm]
 distribution = true
 
+[tool.pdm.version]
+source = "scm"
+
 [project]
 name = "another-swayrst"
-version = "0.0.1"
+dynamic = ["version"]
 description = "A tool to restore window layout in swaywm"
 authors = [
     {name = "Alexander Faul", email = "kontakt-another-swayrst@afaul.de"},
