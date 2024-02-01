@@ -68,7 +68,6 @@ class AnotherSwayrst:
             _logger.info(f"create config file: {self.__config_file}")
             with self.__config_file.open("w") as FILE:
                 FILE.write(self._config.model_dump_json(indent=2))
-        self._config.profile_dir.mkdir(exist_ok=True)
         self.__i3ipc: i3ipc.Connection = i3ipc.Connection()
 
     def __execute_command(self, command: str, app: i3ipc.Con | None = None) -> None:
@@ -523,6 +522,7 @@ class AnotherSwayrst:
     def save(self, profile_name) -> None:
         """Save the current tree as a json file."""
 
+        self._config.profile_dir.mkdir(exist_ok=True)
         self.__set_profile(profile_name=profile_name)
 
         _logger.info(f"Saving profile {self._profile_name} to {self._profile_file}")

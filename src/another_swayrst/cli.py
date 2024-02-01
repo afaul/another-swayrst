@@ -29,7 +29,9 @@ _logger = logging.getLogger(__name__)
     "config_file",
     default=None,
     help="Config file to use.",
-    type=click.Path(dir_okay=False, resolve_path=True, path_type=pathlib.Path),
+    type=click.Path(
+        dir_okay=False, file_okay=True, resolve_path=True, path_type=pathlib.Path
+    ),
 )
 @click.option(
     "--save-current-config",
@@ -40,7 +42,9 @@ _logger = logging.getLogger(__name__)
 @click.option(
     "--profile-dir",
     default=None,
-    type=click.Path(dir_okay=True, resolve_path=False, path_type=pathlib.Path),
+    type=click.Path(
+        dir_okay=True, file_okay=False, resolve_path=True, path_type=pathlib.Path
+    ),
     help="Where to search for / save the layout profiles.",
 )
 @click.option(
@@ -116,4 +120,4 @@ def show_config(ctx):
 
 
 if __name__ == "__main__":
-    main(auto_envvar_prefix="ANOTHER_SWAYRST")
+    main()
