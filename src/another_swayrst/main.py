@@ -94,14 +94,20 @@ class AnotherSwayrst:
         return types.Tree(outputs=list_of_outputs)
 
     def __get_first_app_id(
-        self, container: types.Container | types.AppContainer
-    ) -> int:
-        """Depth first walk through a tree of containers and return the id of the first container which represent an application."""
+        self,
+        container: types.Container | types.AppContainer,
+        map_old_to_new_id: dict[int, int],
+    ) -> int | None:
+        """Depth first walk through a tree of containers and return the id of the first container which represent an application and which exist in the current tree."""
 
         if isinstance(container, types.AppContainer):
-            return container.id
+            if container.id in map_old_to_new_id:
+                return map_old_to_new_id[container.id]
         else:
-            return self.__get_first_app_id(container.sub_containers[0])
+            for sub_container in container.sub_containers:
+                first_app_id = self.__get_first_app_id(sub_container, map_old_to_new_id)
+                if first_app_id is not None:
+                    return first_app_id
 
     def __get_map_of_apps(
         self, tree: types.Tree
@@ -306,23 +312,23 @@ class AnotherSwayrst:
 
         first_app = True
         for container in containers:
-            old_id: int = self.__get_first_app_id(container)
-            new_id: int = map_old_to_new_id[old_id]
-            app: i3ipc.Con | None = self.__i3ipc.get_tree().find_by_id(new_id)
-            if app is not None:
-                if first_app:
-                    self.__execute_command(app=app, command="focus")
-                    self.__execute_command(app=app, command="split toggle")
-                    if layout == "stacked":
-                        layout = "stacking"
-                    self.__execute_command(app=app, command=f"layout {layout}")
-                    first_app = False
-                else:
-                    self.__execute_command(
-                        app=app,
-                        command=f"move container to workspace number {workspace_number}",
-                    )
-                    self.__execute_command(app=app, command="floating off")
+            new_id: int | None = self.__get_first_app_id(container, map_old_to_new_id)
+            if new_id is not None:
+                app: i3ipc.Con | None = self.__i3ipc.get_tree().find_by_id(new_id)
+                if app is not None:
+                    if first_app:
+                        self.__execute_command(app=app, command="focus")
+                        self.__execute_command(app=app, command="split toggle")
+                        if layout == "stacked":
+                            layout = "stacking"
+                        self.__execute_command(app=app, command=f"layout {layout}")
+                        first_app = False
+                    else:
+                        self.__execute_command(
+                            app=app,
+                            command=f"move container to workspace number {workspace_number}",
+                        )
+                        self.__execute_command(app=app, command="floating off")
 
         for container in containers:
             if isinstance(container, types.Container):
@@ -344,23 +350,27 @@ class AnotherSwayrst:
                         _logger.warning("workspace without number found")
                     else:
                         for container in workspace.containers:
-                            old_id: int = self.__get_first_app_id(container)
-                            new_id: int = map_old_to_new_id[old_id]
-                            app: i3ipc.Con | None = self.__i3ipc.get_tree().find_by_id(
-                                new_id
+                            new_id: int | None = self.__get_first_app_id(
+                                container, map_old_to_new_id
                             )
-                            if app is not None:
-                                self.__execute_command(
-                                    app=app,
-                                    command=f"move container to workspace number {workspace.number}",
+                            if new_id is not None:
+                                app: i3ipc.Con | None = (
+                                    self.__i3ipc.get_tree().find_by_id(new_id)
                                 )
-                                self.__execute_command(app=app, command="floating off")
-                                layout: str = workspace.layout
-                                if layout == "stacked":
-                                    layout = "stacking"
-                                self.__execute_command(
-                                    app=app, command=f"layout {layout}"
-                                )
+                                if app is not None:
+                                    self.__execute_command(
+                                        app=app,
+                                        command=f"move container to workspace number {workspace.number}",
+                                    )
+                                    self.__execute_command(
+                                        app=app, command="floating off"
+                                    )
+                                    layout: str = workspace.layout
+                                    if layout == "stacked":
+                                        layout = "stacking"
+                                    self.__execute_command(
+                                        app=app, command=f"layout {layout}"
+                                    )
 
                         for container in workspace.containers:
                             if isinstance(container, types.Container):
@@ -458,41 +468,23 @@ class AnotherSwayrst:
 
     def __start_missing_apps(self) -> None:
         """Start all apps which are in old tree but not in current one."""
+
         if self._config.start_missing_apps.active:
             missing_apps: list[dict[str, int | list[str]]] = self.__get_missing_apps()
-            for app_info in missing_apps:
-                amount: int = app_info["amount"]  # type: ignore
+            while len(missing_apps) > 0:
+                app_info: dict[str, int | list[str]] = missing_apps[0]
                 cmd_org: list[str] = app_info["cmd"]  # type: ignore
-                cmd_new = cmd_org.copy()
-                for _ in range(amount):
-                    if (
+                cmd_new: list[str] = cmd_org.copy()
+                if cmd_org[0] in self._config.start_missing_apps.command_translation:
+                    cmd_new[0] = self._config.start_missing_apps.command_translation[
                         cmd_org[0]
-                        in self._config.start_missing_apps.command_translation
-                    ):
-                        cmd_new[
-                            0
-                        ] = self._config.start_missing_apps.command_translation[
-                            cmd_org[0]
-                        ]
-                    _logger.debug(f"starting App for {cmd_org} with command: {cmd_new}")
-                    subprocess.Popen(cmd_new, cwd=pathlib.Path.home())
-
-            self.__wait_until_apps_started(
-                timeout=self._config.start_missing_apps.timeout
-            )
-
-    def __wait_until_apps_started(self, timeout: int) -> None:
-        """Wait until all missing apps are started, or timeout reached."""
-
-        missing_apps_count = len(self.__get_missing_apps())
-        timeout_counter = 0
-        while missing_apps_count > 0 and timeout_counter < timeout:
-            time.sleep(1)
-            timeout_counter += 1
-            missing_apps_count = len(self.__get_missing_apps())
-
-        if timeout_counter >= timeout:
-            _logger.warning(f"not all missing apps started after timeout of {timeout}s")
+                    ]
+                _logger.debug(f"starting App for {cmd_org} with command: {cmd_new}")
+                p = subprocess.Popen(cmd_new, cwd=pathlib.Path.home())
+                time.sleep(
+                    self._config.start_missing_apps.wait_time_after_command_start
+                )
+                missing_apps = self.__get_missing_apps()
 
     def load(self, profile_name: str) -> None:
         """Load an window tree from a json file and recreate the defined layout."""
