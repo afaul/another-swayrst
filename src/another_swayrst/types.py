@@ -33,6 +33,7 @@ class AppContainer(TreeElement):
     command: list[str]
     width: int
     height: int
+    title: str
 
 
 class Container(TreeElement):

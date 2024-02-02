@@ -181,14 +181,28 @@ class AnotherSwayrst:
         """Create map of app id in old tree to app id in new tree."""
 
         map_old_to_new_id: dict[int, int] = {}
-        _, new_map_cmd_ids = self.__get_map_of_apps(self.__get_current_tree())
+        new_map_id_app, new_map_cmd_ids = self.__get_map_of_apps(
+            self.__get_current_tree()
+        )
 
         for cmd, ids in self.__old_map_cmd_ids.items():
-            for old_id in ids:
-                if cmd in new_map_cmd_ids:
-                    if len(new_map_cmd_ids[cmd]) > 0:
-                        new_id: int = new_map_cmd_ids[cmd].pop()
-                        map_old_to_new_id[old_id] = new_id
+            if cmd in new_map_cmd_ids:
+                matched_old_ids: set[int] = set()
+                for old_id in ids:
+                    old_title = self.__old_map_id_app[old_id].title
+                    for new_id in new_map_cmd_ids[cmd]:
+                        new_title = new_map_id_app[new_id].title
+                        if old_title == new_title:
+                            map_old_to_new_id[old_id] = new_id
+                            matched_old_ids.add(old_id)
+                            new_map_cmd_ids[cmd].remove(new_id)
+                            break
+
+                for old_id in ids:
+                    if old_id not in matched_old_ids:
+                        if len(new_map_cmd_ids[cmd]) > 0:
+                            new_id: int = new_map_cmd_ids[cmd].pop()
+                            map_old_to_new_id[old_id] = new_id
 
         return map_old_to_new_id
 
@@ -245,6 +259,7 @@ class AnotherSwayrst:
                     command=command,
                     width=node["window_rect"]["width"],
                     height=node["window_rect"]["height"],
+                    title=node["name"],
                 )
             else:
                 subcontainer: list[
