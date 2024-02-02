@@ -7,7 +7,7 @@ class AnotherSwayrstConfigStartMissingApps(pydantic.BaseModel):
     """Configuration for the start of missing apps feature"""
 
     active: bool = False
-    wait_time_after_command_start: float = 0.5
+    wait_time_after_command_start: float = 1.1
     command_translation: dict[str, str] = {}
 
 

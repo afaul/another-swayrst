@@ -29,7 +29,7 @@
             "program": "src/another_swayrst/cli.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["load", "test_profile"]
+            "args": ["-v", "DEBUG", "load", "test_profile"]
         },
         {
             "name": "show config",
