@@ -112,7 +112,7 @@ def load(ctx, profile_name: str):
 
 @main.command()
 @click.pass_context
-@click.argument("profile_name")
+@click.argument("profile_name", default="")
 def show_config(ctx, profile_name: str):
     """Show the effective configuration and exit"""
 
