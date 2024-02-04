@@ -79,7 +79,7 @@ class AnotherSwayrst:
 
         ret = con.command(command)
         if not ret[0].success:  # type: ignore
-            _logger.error(f"error while executing ipc command: {ret[0].error}")  # type: ignore
+            _logger.error(f"error while executing ipc command {command}: {ret[0].error}")  # type: ignore
 
     def __get_current_tree(self) -> types.Tree:
         """Create a representation of the current window tree."""
@@ -458,23 +458,23 @@ class AnotherSwayrst:
                     if current_height < container.height:
                         self.__execute_command(
                             app=new_app,
-                            command=f"resize grow height {container.height - current_height}px",
+                            command=f"resize grow down {container.height - current_height}px",
                         )
                     elif current_height > container.height:
                         self.__execute_command(
                             app=new_app,
-                            command=f"resize shrink height {current_height - container.height}px",
+                            command=f"resize shrink down {current_height - container.height}px",
                         )
 
                     if current_width < container.width:
                         self.__execute_command(
                             app=new_app,
-                            command=f"resize grow width {container.width-current_width}px",
+                            command=f"resize grow right {container.width-current_width}px",
                         )
                     elif current_width > container.width:
                         self.__execute_command(
                             app=new_app,
-                            command=f"resize shrink width {current_width-container.width}px",
+                            command=f"resize shrink right {current_width-container.width}px",
                         )
 
             elif isinstance(container, types.Container):
