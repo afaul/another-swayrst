@@ -25,6 +25,7 @@ class TreeElement(pydantic.BaseModel):
     """Base class for all tree elements"""
 
     id: int
+    version: int = 1
 
 
 class AppContainer(TreeElement):
