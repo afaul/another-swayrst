@@ -112,7 +112,8 @@ def load(ctx, profile_name: str):
 
 @main.command()
 @click.pass_context
-def show_config(ctx):
+@click.argument("profile_name")
+def show_config(ctx, profile_name: str):
     """Show the effective configuration and exit"""
 
     obj: another_swayrst.AnotherSwayrst = ctx.parent.params["obj"]
