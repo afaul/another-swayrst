@@ -60,9 +60,9 @@ class AnotherSwayrst:
             for translation_pair in command_translation:
                 command_A: str = translation_pair[0]
                 command_B: str = translation_pair[1]
-                self._config.start_missing_apps.command_translation[
-                    command_A
-                ] = command_B
+                self._config.start_missing_apps.command_translation[command_A] = (
+                    command_B
+                )
 
         if save_current_config:
             _logger.info(f"create config file: {self.__config_file}")
@@ -119,9 +119,9 @@ class AnotherSwayrst:
 
         for output in tree.outputs:
             for workspace in output.workspaces:
-                map_apps_per_workspace: dict[
-                    int, types.AppContainer
-                ] = self.__recursive_walk_through_container_tree(workspace.containers)
+                map_apps_per_workspace: dict[int, types.AppContainer] = (
+                    self.__recursive_walk_through_container_tree(workspace.containers)
+                )
                 for app_id, app_container in map_apps_per_workspace.items():
                     if app_id in map_id_app:
                         _logger.warning(f"duplicate id found: {app_id}")
@@ -262,9 +262,9 @@ class AnotherSwayrst:
                     title=node["name"],
                 )
             else:
-                subcontainer: list[
-                    types.Container | types.AppContainer
-                ] = self.__parse_tree_container_elements(node["nodes"])
+                subcontainer: list[types.Container | types.AppContainer] = (
+                    self.__parse_tree_container_elements(node["nodes"])
+                )
                 container = types.Container(
                     id=node["id"],
                     sub_containers=subcontainer,
@@ -296,12 +296,12 @@ class AnotherSwayrst:
         for node in nodes:
             if node["type"] != "workspace":
                 _logger.warning(f"Unexpected node type found: {node['type']}")
-            containers: list[
-                types.Container | types.AppContainer
-            ] = self.__parse_tree_container_elements(node["nodes"])
-            floating_containers: list[
-                types.Container | types.AppContainer
-            ] = self.__parse_tree_container_elements(node["floating_nodes"])
+            containers: list[types.Container | types.AppContainer] = (
+                self.__parse_tree_container_elements(node["nodes"])
+            )
+            floating_containers: list[types.Container | types.AppContainer] = (
+                self.__parse_tree_container_elements(node["floating_nodes"])
+            )
             workspace_number: int | None = None
             if "num" in node:
                 workspace_number = node["num"]
@@ -403,7 +403,14 @@ class AnotherSwayrst:
                                     app=app,
                                     command=f"move container to workspace number {workspace.number}",
                                 )
+                        # move workspace to output
+                        self.__execute_command(
+                            app=None,
+                            command=f"move workspace to output {output.name}",
+                        )
+
                         # resize apps
+                        map_old_to_new_id = self.__get_old_to_new_map()
                         self.__resize_apps(workspace.containers, map_old_to_new_id)
 
     def __recursive_walk_through_container_tree(
@@ -419,10 +426,10 @@ class AnotherSwayrst:
                     _logger.warning(f"duplicate ID found: {id}")
                 map_id_app[id] = container
             elif isinstance(container, types.Container):
-                sub_maps: dict[
-                    int, types.AppContainer
-                ] = self.__recursive_walk_through_container_tree(
-                    container.sub_containers
+                sub_maps: dict[int, types.AppContainer] = (
+                    self.__recursive_walk_through_container_tree(
+                        container.sub_containers
+                    )
                 )
                 for key, value in sub_maps.items():
                     if key in map_id_app:
@@ -440,32 +447,35 @@ class AnotherSwayrst:
 
         for container in containers:
             if isinstance(container, types.AppContainer):
-                new_id: int = map_old_to_new_id[container.id]
-                new_app: i3ipc.Con | None = self.__i3ipc.get_tree().find_by_id(new_id)
-                current_height: int = new_app.window_rect.height  # type: ignore
-                current_width: int = new_app.window_rect.width  # type: ignore
+                if container.id in map_old_to_new_id:
+                    new_id: int = map_old_to_new_id[container.id]
+                    new_app: i3ipc.Con | None = self.__i3ipc.get_tree().find_by_id(
+                        new_id
+                    )
+                    current_height: int = new_app.window_rect.height  # type: ignore
+                    current_width: int = new_app.window_rect.width  # type: ignore
 
-                if current_height < container.height:
-                    self.__execute_command(
-                        app=new_app,
-                        command=f"resize grow height {container.height - current_height}px",
-                    )
-                elif current_height > container.height:
-                    self.__execute_command(
-                        app=new_app,
-                        command=f"resize shrink height {current_height - container.height}px",
-                    )
+                    if current_height < container.height:
+                        self.__execute_command(
+                            app=new_app,
+                            command=f"resize grow height {container.height - current_height}px",
+                        )
+                    elif current_height > container.height:
+                        self.__execute_command(
+                            app=new_app,
+                            command=f"resize shrink height {current_height - container.height}px",
+                        )
 
-                if current_width < container.width:
-                    self.__execute_command(
-                        app=new_app,
-                        command=f"resize grow width {container.width-current_width}px",
-                    )
-                elif current_width > container.width:
-                    self.__execute_command(
-                        app=new_app,
-                        command=f"resize shrink width {current_width-container.width}px",
-                    )
+                    if current_width < container.width:
+                        self.__execute_command(
+                            app=new_app,
+                            command=f"resize grow width {container.width-current_width}px",
+                        )
+                    elif current_width > container.width:
+                        self.__execute_command(
+                            app=new_app,
+                            command=f"resize shrink width {current_width-container.width}px",
+                        )
 
             elif isinstance(container, types.Container):
                 self.__resize_apps(
