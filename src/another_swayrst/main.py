@@ -410,7 +410,7 @@ class AnotherSwayrst:
                         )
 
                         # resize apps
-                        map_old_to_new_id = self.__get_old_to_new_map()
+                        # map_old_to_new_id = self.__get_old_to_new_map()
                         self.__resize_apps(workspace.containers, map_old_to_new_id)
 
     def __recursive_walk_through_container_tree(
