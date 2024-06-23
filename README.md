@@ -6,7 +6,7 @@ Restore workspaces in sway to displays, optional starts applications, move alrea
 ## Setup
 
 1. Download
-    * From [AUR] -> comming soon.
+    * From [AUR] `yay -S another-swayrst`.
     * From [Relaeses](https://github.com/afaul/another-swayrst/releases)
         * `unzip` and install e.g. with [pdm](https://pdm-project.org/latest/) `pdm install`
 1. Setup your wanted layout (outputs, workspaces and windows).
