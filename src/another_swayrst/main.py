@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import os
@@ -23,6 +24,7 @@ class AnotherSwayrst:
         save_current_config: bool,
         profile_dir: pathlib.Path | None,
         command_translation: tuple[tuple[str, str]] | None,
+        respect_other_workspaces: bool | None,
     ) -> None:
         self.__config_file: pathlib.Path | None = config_file
         config_file_name = "another-swayrst.conf"
@@ -41,6 +43,12 @@ class AnotherSwayrst:
             _logger.info(f"loading config file: {self.__config_file}")
             with self.__config_file.open("r") as FILE:
                 config_json: dict = json.load(FILE)
+            if config_json["version"] != 2:
+                if config_json["version"] == 1:
+                    config_json["version"] = 2
+                    config_json["respect_other_workspaces"] = False
+                with self.__config_file.open("w") as FILE:
+                    json.dump(config_json, FILE, indent=2)
             self._config: types.AnotherSwayrstConfig = pydantic.tools.parse_obj_as(
                 types.AnotherSwayrstConfig, config_json
             )
@@ -63,6 +71,8 @@ class AnotherSwayrst:
                 self._config.start_missing_apps.command_translation[command_A] = (
                     command_B
                 )
+        if respect_other_workspaces is not None:
+            self._config.respect_other_workspaces = respect_other_workspaces
 
         if save_current_config:
             _logger.info(f"create config file: {self.__config_file}")
@@ -79,7 +89,9 @@ class AnotherSwayrst:
 
         ret = con.command(command)
         if not ret[0].success:  # type: ignore
-            _logger.error(f"error while executing ipc command {command}: {ret[0].error}")  # type: ignore
+            _logger.error(
+                f"error while executing ipc command {command}: {ret[0].error}"  # type: ignore
+            )  # type: ignore
 
     def __get_current_tree(self) -> types.Tree:
         """Create a representation of the current window tree."""
@@ -150,13 +162,11 @@ class AnotherSwayrst:
             _logger.error("no map for cmd to ids to restore available")
             sys.exit(1004)
 
-        _, new_map_cmd_ids = self.__get_map_of_apps(self.__get_current_tree())
-
         missing_apps: list[dict[str, int | list[str]]] = []
         for cmd_str, old_ids in self.__old_map_cmd_ids.items():
             old_amount = len(old_ids)
-            if cmd_str in new_map_cmd_ids:
-                new_amount = len(new_map_cmd_ids[cmd_str])
+            if cmd_str in self.__new_map_cmd_ids:
+                new_amount = len(self.__new_map_cmd_ids[cmd_str])
                 if new_amount < old_amount:
                     missing_apps.append(
                         {
@@ -181,9 +191,9 @@ class AnotherSwayrst:
         """Create map of app id in old tree to app id in new tree."""
 
         map_old_to_new_id: dict[int, int] = {}
-        new_map_id_app, new_map_cmd_ids = self.__get_map_of_apps(
-            self.__get_current_tree()
-        )
+
+        new_map_id_app = copy.deepcopy(self.__new_map_id_app)
+        new_map_cmd_ids = copy.deepcopy(self.__new_map_cmd_ids)
 
         for cmd, ids in self.__old_map_cmd_ids.items():
             if cmd in new_map_cmd_ids:
@@ -237,8 +247,7 @@ class AnotherSwayrst:
     def __move_all_apps_to_scratchpad(self) -> None:
         """Move all apps to scratchpad, create empty."""
 
-        new_map_id_app, _ = self.__get_map_of_apps(self.__get_current_tree())
-        for id in new_map_id_app.keys():
+        for id in self.__new_map_id_app.keys():
             app: i3ipc.Con | None = self.__i3ipc.get_tree().find_by_id(id)
             if app is not None:
                 self.__execute_command(app=app, command="move scratchpad")
@@ -273,6 +282,13 @@ class AnotherSwayrst:
             return_element.append(container)
         return return_element
 
+    def __output_in_tree(self, output_name: str, tree: types.Tree) -> bool:
+        """Check if output is in tree."""
+        for output in tree.outputs:
+            if output.name == output_name:
+                return True
+        return False
+
     def __parse_tree_output_elements(self, nodes) -> list[types.Output]:
         """Iterate through all output elements in i3ipc-tree."""
 
@@ -280,8 +296,11 @@ class AnotherSwayrst:
         for node in nodes:
             if node["type"] != "output":
                 _logger.warning(f"Unexpected node type found: {node['type']}")
+            if self._config.respect_other_workspaces and hasattr(self, "_restore_tree"):
+                if not self.__output_in_tree(node["name"], self._restore_tree):
+                    continue
             workspaces: list[types.Workspace] = self.__parse_tree_workspace_elements(
-                node["nodes"]
+                node["nodes"], node["name"]
             )
             output = types.Output(
                 id=node["id"], name=node["name"], workspaces=workspaces
@@ -289,13 +308,32 @@ class AnotherSwayrst:
             return_element.append(output)
         return return_element
 
-    def __parse_tree_workspace_elements(self, nodes) -> list[types.Workspace]:
+    def __workspace_in_tree(
+        self, workspace_name: str, output_name: str, tree: types.Tree
+    ) -> bool:
+        """Check if workspace is in tree."""
+        for output in tree.outputs:
+            if output.name == output_name:
+                for workspace in output.workspaces:
+                    if workspace.name == workspace_name:
+                        return True
+        return False
+
+    def __parse_tree_workspace_elements(
+        self, nodes, output_name: str
+    ) -> list[types.Workspace]:
         """Iterate through all workspace elements in i3ipc-tree."""
 
         return_element: list[types.Workspace] = []
         for node in nodes:
             if node["type"] != "workspace":
                 _logger.warning(f"Unexpected node type found: {node['type']}")
+
+            if self._config.respect_other_workspaces and hasattr(self, "_restore_tree"):
+                if not self.__workspace_in_tree(
+                    node["name"], output_name, self._restore_tree
+                ):
+                    continue
             containers: list[types.Container | types.AppContainer] = (
                 self.__parse_tree_container_elements(node["nodes"])
             )
@@ -469,12 +507,12 @@ class AnotherSwayrst:
                     if current_width < container.width:
                         self.__execute_command(
                             app=new_app,
-                            command=f"resize grow right {container.width-current_width}px",
+                            command=f"resize grow right {container.width - current_width}px",
                         )
                     elif current_width > container.width:
                         self.__execute_command(
                             app=new_app,
-                            command=f"resize shrink right {current_width-container.width}px",
+                            command=f"resize shrink right {current_width - container.width}px",
                         )
 
             elif isinstance(container, types.Container):
@@ -511,7 +549,7 @@ class AnotherSwayrst:
                 )
                 missing_apps = self.__get_missing_apps()
 
-    def load(self, profile_name: str) -> None:
+    def load(self, profile_name: str, respect_workspaces: bool = False) -> None:
         """Load an window tree from a json file and recreate the defined layout."""
 
         self.__set_profile(profile_name=profile_name)
@@ -531,8 +569,15 @@ class AnotherSwayrst:
         self.__old_map_id_app, self.__old_map_cmd_ids = self.__get_map_of_apps(
             self._restore_tree
         )
+
+        self.__new_map_id_app, self.__new_map_cmd_ids = self.__get_map_of_apps(
+            self.__get_current_tree()
+        )
         self.__start_missing_apps()
 
+        self.__new_map_id_app, self.__new_map_cmd_ids = self.__get_map_of_apps(
+            self.__get_current_tree()
+        )
         self.__move_all_apps_to_scratchpad()
         self.__recreate_workspaces()
 
