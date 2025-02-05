@@ -5,6 +5,7 @@
     "version": "0.2.0",
     "configurations": [
 
+
         {
             "name": "Python: Current File",
             "type": "python",
@@ -20,7 +21,7 @@
             "program": "src/another_swayrst/cli.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["save", "test_profile"]
+            "args": ["save", "x"]
         },
         {
             "name": "load profile",
@@ -29,7 +30,7 @@
             "program": "src/another_swayrst/cli.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["-v", "DEBUG", "load", "test_profile"]
+            "args": ["-v", "DEBUG", "--respect-other-workspaces", "load", "x"]
         },
         {
             "name": "show config",
