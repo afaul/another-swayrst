@@ -1,4 +1,5 @@
 import pathlib
+import typing
 
 import pydantic
 
@@ -14,11 +15,12 @@ class AnotherSwayrstConfigStartMissingApps(pydantic.BaseModel):
 class AnotherSwayrstConfig(pydantic.BaseModel):
     """Configuration of the tool."""
 
-    version: int = 1
+    version: typing.Literal[2] = 2
     profile_dir: pathlib.Path
     start_missing_apps: AnotherSwayrstConfigStartMissingApps = (
         AnotherSwayrstConfigStartMissingApps()
     )
+    respect_other_workspaces: bool = False
 
 
 class TreeElement(pydantic.BaseModel):

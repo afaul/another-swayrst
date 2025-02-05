@@ -1,5 +1,4 @@
 import logging
-import os
 import pathlib
 import sys
 
@@ -59,6 +58,11 @@ _logger = logging.getLogger(__name__)
     multiple=True,
     help="[..ion A B] Translate command A into B when starting missing apps.",
 )
+@click.option(
+    "--respect-other-workspaces/--no-respect-other-workspace",
+    default=None,
+    help="Respect the configuration of other workspaces.",
+)
 def main(
     ctx,
     log_level: str,
@@ -67,6 +71,7 @@ def main(
     save_current_config: bool,
     profile_dir: pathlib.Path | None,
     command_translation: tuple[tuple[str, str]] | None,
+    respect_other_workspaces: bool | None,
 ):
     log_handlers = []
     # log_stream_handler = logging.StreamHandler(sys.stderr)
@@ -78,7 +83,7 @@ def main(
         level=logging._nameToLevel[log_level],
     )
     _logger.info(
-        f"another-swayrst started with log-level: {logging.getLevelName(logging.root.level) }"
+        f"another-swayrst started with log-level: {logging.getLevelName(logging.root.level)}"
     )
     obj = another_swayrst.AnotherSwayrst(
         config_file=config_file,
@@ -86,6 +91,7 @@ def main(
         save_current_config=save_current_config,
         profile_dir=profile_dir,
         command_translation=command_translation,
+        respect_other_workspaces=respect_other_workspaces,
     )
     ctx.params["obj"] = obj
 
