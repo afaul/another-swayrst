@@ -1,4 +1,3 @@
-import copy
 import json
 import logging
 import os
@@ -162,11 +161,13 @@ class AnotherSwayrst:
             _logger.error("no map for cmd to ids to restore available")
             sys.exit(1004)
 
+        _, new_map_cmd_ids = self.__get_map_of_apps(self.__get_current_tree())
+
         missing_apps: list[dict[str, int | list[str]]] = []
         for cmd_str, old_ids in self.__old_map_cmd_ids.items():
             old_amount = len(old_ids)
-            if cmd_str in self.__new_map_cmd_ids:
-                new_amount = len(self.__new_map_cmd_ids[cmd_str])
+            if cmd_str in new_map_cmd_ids:
+                new_amount = len(new_map_cmd_ids[cmd_str])
                 if new_amount < old_amount:
                     missing_apps.append(
                         {
@@ -191,9 +192,9 @@ class AnotherSwayrst:
         """Create map of app id in old tree to app id in new tree."""
 
         map_old_to_new_id: dict[int, int] = {}
-
-        new_map_id_app = copy.deepcopy(self.__new_map_id_app)
-        new_map_cmd_ids = copy.deepcopy(self.__new_map_cmd_ids)
+        new_map_id_app, new_map_cmd_ids = self.__get_map_of_apps(
+            self.__get_current_tree()
+        )
 
         for cmd, ids in self.__old_map_cmd_ids.items():
             if cmd in new_map_cmd_ids:
@@ -247,7 +248,8 @@ class AnotherSwayrst:
     def __move_all_apps_to_scratchpad(self) -> None:
         """Move all apps to scratchpad, create empty."""
 
-        for id in self.__new_map_id_app.keys():
+        new_map_id_app, _ = self.__get_map_of_apps(self.__get_current_tree())
+        for id in new_map_id_app.keys():
             app: i3ipc.Con | None = self.__i3ipc.get_tree().find_by_id(id)
             if app is not None:
                 self.__execute_command(app=app, command="move scratchpad")
@@ -529,10 +531,23 @@ class AnotherSwayrst:
             f"{profile_name}.json"
         )
 
+    def __get_first_workspace(self, tree) -> types.Workspace | None:
+        """Return the first non '__i3' workspace in tree."""
+        for output in tree.outputs:
+            if output.name != "__i3":
+                for workspace in output.workspaces:
+                    return workspace
+
     def __start_missing_apps(self) -> None:
         """Start all apps which are in old tree but not in current one."""
 
         if self._config.start_missing_apps.active:
+            first_workspace = self.__get_first_workspace(self._restore_tree)
+            if first_workspace is not None:
+                self.__execute_command(
+                    app=None,
+                    command=f"workspace number {first_workspace.number}",
+                )
             missing_apps: list[dict[str, int | list[str]]] = self.__get_missing_apps()
             while len(missing_apps) > 0:
                 app_info: dict[str, int | list[str]] = missing_apps[0]
@@ -549,7 +564,19 @@ class AnotherSwayrst:
                 )
                 missing_apps = self.__get_missing_apps()
 
-    def load(self, profile_name: str, respect_workspaces: bool = False) -> None:
+    def __check_output_exists(self, tree1: types.Tree, tree2: types.Tree) -> bool:
+        """Check if at least one common output exists in given trees."""
+        output_names_tree_1: set[str] = set()
+        for output in tree1.outputs:
+            output_name = output.name
+            if output_name != "__i3":
+                output_names_tree_1.add(output_name)
+        for output in tree2.outputs:
+            if output.name in output_names_tree_1:
+                return True
+        return False
+
+    def load(self, profile_name: str) -> None:
         """Load an window tree from a json file and recreate the defined layout."""
 
         self.__set_profile(profile_name=profile_name)
@@ -566,18 +593,18 @@ class AnotherSwayrst:
         self._restore_tree: types.Tree = pydantic.tools.parse_obj_as(
             types.Tree, restore_tree_json
         )
+
+        if not self.__check_output_exists(
+            self._restore_tree, self.__get_current_tree()
+        ):
+            _logger.error("no common output name in restore profile and current system")
+            sys.exit(1002)
+
         self.__old_map_id_app, self.__old_map_cmd_ids = self.__get_map_of_apps(
             self._restore_tree
         )
-
-        self.__new_map_id_app, self.__new_map_cmd_ids = self.__get_map_of_apps(
-            self.__get_current_tree()
-        )
         self.__start_missing_apps()
 
-        self.__new_map_id_app, self.__new_map_cmd_ids = self.__get_map_of_apps(
-            self.__get_current_tree()
-        )
         self.__move_all_apps_to_scratchpad()
         self.__recreate_workspaces()
 
@@ -601,5 +628,5 @@ class AnotherSwayrst:
 
     def show_config(self) -> None:
         print(f"configuration file: {self.__config_file}")
-        print(f"effective configuration:")
+        print("effective configuration:")
         print(self._config.model_dump_json(indent=2))
