@@ -99,11 +99,20 @@ def main(
 @main.command()
 @click.pass_context
 @click.argument("profile_name")
-def save(ctx, profile_name: str):
+@click.option(
+    "-w",
+    "--workspace",
+    "workspaces",
+    default=None,
+    nargs=1,
+    multiple=True,
+    help="Workspace (by name) to save.",
+)
+def save(ctx, profile_name: str, workspaces: tuple[str]) -> None:
     """Save current window layout."""
 
     obj: another_swayrst.AnotherSwayrst = ctx.parent.params["obj"]
-    obj.save(profile_name)
+    obj.save(profile_name, workspaces)
 
 
 @main.command()

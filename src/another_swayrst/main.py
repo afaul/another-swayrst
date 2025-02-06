@@ -558,7 +558,7 @@ class AnotherSwayrst:
                         cmd_org[0]
                     ]
                 _logger.debug(f"starting App for {cmd_org} with command: {cmd_new}")
-                p = subprocess.Popen(cmd_new, cwd=pathlib.Path.home())
+                subprocess.Popen(cmd_new, cwd=pathlib.Path.home())
                 time.sleep(
                     self._config.start_missing_apps.wait_time_after_command_start
                 )
@@ -608,7 +608,7 @@ class AnotherSwayrst:
         self.__move_all_apps_to_scratchpad()
         self.__recreate_workspaces()
 
-    def save(self, profile_name) -> None:
+    def save(self, profile_name, workspaces: tuple[str]) -> None:
         """Save the current tree as a json file."""
 
         self._config.profile_dir.mkdir(exist_ok=True)
@@ -623,6 +623,28 @@ class AnotherSwayrst:
                 f"Profile {self._profile_name} already exists -> overwriting {self._profile_file}"
             )
         current_tree: types.Tree = self.__get_current_tree()
+        if workspaces is not None:
+            new_output_list: list[types.Output] = []
+            for output in current_tree.outputs:
+                if output.name == "__i3":
+                    new_output_list.append(output)
+                else:
+                    list_of_workspaces: list[types.Workspace] = []
+                    for workspace in output.workspaces:
+                        if workspace.name in workspaces:
+                            list_of_workspaces.append(workspace)
+                    if len(list_of_workspaces) > 0:
+                        new_output = types.Output(
+                            id=output.id,
+                            version=output.version,
+                            name=output.name,
+                            workspaces=list_of_workspaces,
+                        )
+                        new_output_list.append(new_output)
+            current_tree = types.Tree(outputs=new_output_list)
+            if len(new_output_list) < 2:  # output __i3 always exists
+                _logger.error("no configured workspace found.")
+
         with self._profile_file.open("w") as FILE:
             FILE.write(current_tree.model_dump_json(indent=2))
 

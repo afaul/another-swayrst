@@ -21,7 +21,7 @@
             "program": "src/another_swayrst/cli.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["--respect-other-workspaces", "save", "y"]
+            "args": ["save", "-w","6", "-w","3","x"]
         },
         {
             "name": "load profile",
