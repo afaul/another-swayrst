@@ -29,8 +29,15 @@ Available Options are:
 | --save-current-config | None | Save the current configuration as json-file. |
 | --profile-dir | DIRECTORY | Where to search for / save the layout |
 | --start-missing-apps, --no-start-missing-apps | None |  (Not) Start the missing apps automatically. |
-| --command-translation | command_A command_B | Translate command A into B when                               starting missing apps. (Necessary since some applications are listed with different name in ps.) |
+| --command-translation | command_A command_B | Translate command A into B when  starting missing apps. (Necessary since some applications are listed with different name in ps.) |
+| --respect-other-workspaces, --no-respect-other-workspace | None | When loading, only modify the workspaces, which are part of the profile. |
 | --help | None | Show help message and exit. |
+
+### Options for the `save` command
+
+| Option | Values | Description |
+| --- | --- | --- |
+| -w, --workspace | workspace name | Name of the workspace, thats configuration should be saved as a profile. Could be set multiple times. Without this option all existing workspaces are saved. |
 
 ## Development
 
