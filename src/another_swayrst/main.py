@@ -366,7 +366,7 @@ class AnotherSwayrst:
         """width first walk through a given tree of Containers and recreate the layout defined by the tree."""
 
         first_app = True
-        for container in containers:
+        for container in containers[:1] + list(reversed(containers[1:])):
             new_id: int | None = self.__get_first_app_id(container, map_old_to_new_id)
             if new_id is not None:
                 app: i3ipc.Con | None = self.__i3ipc.get_tree().find_by_id(new_id)
@@ -404,7 +404,9 @@ class AnotherSwayrst:
                     if workspace.number is None:
                         _logger.warning("workspace without number found")
                     else:
-                        for container in workspace.containers:
+                        for container in workspace.containers[:1] + list(
+                            reversed(workspace.containers[1:])
+                        ):
                             new_id: int | None = self.__get_first_app_id(
                                 container, map_old_to_new_id
                             )
