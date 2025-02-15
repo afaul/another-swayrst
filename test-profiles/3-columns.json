@@ -1,0 +1,160 @@
+{
+  "outputs": [
+    {
+      "id": 2147483647,
+      "version": 1,
+      "name": "__i3",
+      "workspaces": [
+        {
+          "id": 2147483646,
+          "version": 1,
+          "name": "__i3_scratch",
+          "containers": [],
+          "floating_containers": [],
+          "number": null,
+          "layout": "splith"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "version": 1,
+      "name": "LVDS-1",
+      "workspaces": [
+        {
+          "id": 10,
+          "version": 1,
+          "name": "3",
+          "containers": [
+            {
+              "id": 26,
+              "version": 1,
+              "sub_containers": [
+                {
+                  "id": 30,
+                  "version": 1,
+                  "sub_containers": [
+                    {
+                      "id": 23,
+                      "version": 1,
+                      "command": [
+                    "python",
+                    "/home/afaul/git-repos/another-swayrst/test-windows/col1_row1.py"
+                  ],
+                      "width": 588,
+                      "height": 713,
+                      "title": "col 1; row 1"
+                    },
+                    {
+                      "id": 31,
+                      "version": 1,
+                      "command": [
+                    "python",
+                    "/home/afaul/git-repos/another-swayrst/test-windows/col1_row2.py"
+                  ],
+                      "width": 588,
+                      "height": 152,
+                      "title": "col 1; row 2"
+                    }
+                  ],
+                  "layout": "splitv"
+                },
+                {
+                  "id": 32,
+                  "version": 1,
+                  "sub_containers": [
+                    {
+                      "id": 28,
+                      "version": 1,
+                      "command": [
+                    "python",
+                    "/home/afaul/git-repos/another-swayrst/test-windows/col2_row1.py"
+                  ],
+                      "width": 468,
+                      "height": 174,
+                      "title": "col 2; row 1"
+                    },
+                    {
+                      "id": 33,
+                      "version": 1,
+                      "command": [
+                    "python",
+                    "/home/afaul/git-repos/another-swayrst/test-windows/col2_row2.py"
+                  ],
+                      "width": 468,
+                      "height": 319,
+                      "title": "col 2; row 2"
+                    },
+                    {
+                      "id": 34,
+                      "version": 1,
+                      "command": [
+                    "python",
+                    "/home/afaul/git-repos/another-swayrst/test-windows/col2_row3.py"
+                  ],
+                      "width": 468,
+                      "height": 74,
+                      "title": "col 2; row 3"
+                    },
+                    {
+                      "id": 36,
+                      "version": 1,
+                      "sub_containers": [
+                        {
+                          "id": 35,
+                          "version": 1,
+                          "command": [
+                            "python",
+                            "/home/afaul/git-repos/another-swayrst/test-windows/col2_row4.py"
+                          ],
+                          "width": 468,
+                          "height": 288,
+                          "title": "col 2; row 4"
+                        }
+                      ],
+                      "layout": "splitv"
+                    }
+                  ],
+                  "layout": "splitv"
+                },
+                {
+                  "id": 37,
+                  "version": 1,
+                  "sub_containers": [
+                    {
+                      "id": 29,
+                      "version": 1,
+                      "command": [
+                    "python",
+                    "/home/afaul/git-repos/another-swayrst/test-windows/col3_row1.py"
+                  ],
+                      "width": 528,
+                      "height": 243,
+                      "title": "col 3; row 1"
+                    },
+                    {
+                      "id": 38,
+                      "version": 1,
+                      "command": [
+                    "python",
+                    "/home/afaul/git-repos/another-swayrst/test-windows/col3_row2.py"
+                  ],
+                      "width": 528,
+                      "height": 622,
+                      "title": "col 3; row 2"
+                    }
+                  ],
+                  "layout": "splitv"
+                }
+              ],
+              "layout": "splith"
+            }
+          ],
+          "floating_containers": [],
+          "number": 3,
+          "layout": "splitv"
+        }
+      ]
+    }
+  ]
+}

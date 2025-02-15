@@ -1,0 +1,102 @@
+{
+  "outputs": [
+    {
+      "id": 2147483647,
+      "version": 1,
+      "name": "__i3",
+      "workspaces": [
+        {
+          "id": 2147483646,
+          "version": 1,
+          "name": "__i3_scratch",
+          "containers": [],
+          "floating_containers": [],
+          "number": null,
+          "layout": "splith"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "version": 1,
+      "name": "LVDS-1",
+      "workspaces": [
+        {
+          "id": 244,
+          "version": 1,
+          "name": "5",
+          "containers": [
+            {
+              "id": 248,
+              "version": 1,
+              "sub_containers": [
+                {
+                  "id": 249,
+                  "version": 1,
+                  "sub_containers": [
+                    {
+                      "id": 210,
+                      "version": 1,
+                      "command": [
+                        "python",
+                        "/home/afaul/git-repos/another-swayrst/test-windows/col2_row2.py"
+                      ],
+                      "width": 1205,
+                      "height": 214,
+                      "title": "col 2; row 2"
+                    },
+                    {
+                      "id": 207,
+                      "version": 1,
+                      "command": [
+                        "python",
+                        "/home/afaul/git-repos/another-swayrst/test-windows/col1_row1.py"
+                      ],
+                      "width": 1205,
+                      "height": 214,
+                      "title": "col 1; row 1"
+                    }
+                  ],
+                  "layout": "splitv"
+                },
+                {
+                  "id": 250,
+                  "version": 1,
+                  "sub_containers": [
+                    {
+                      "id": 221,
+                      "version": 1,
+                      "command": [
+                        "python",
+                        "/home/afaul/git-repos/another-swayrst/test-windows/col4_row1.py"
+                      ],
+                      "width": 384,
+                      "height": 433,
+                      "title": "col 4; row 1"
+                    }
+                  ],
+                  "layout": "splith"
+                }
+              ],
+              "layout": "splith"
+            },
+            {
+              "id": 208,
+              "version": 1,
+              "command": [
+                "python",
+                "/home/afaul/git-repos/another-swayrst/test-windows/col1_row2.py"
+              ],
+              "width": 1594,
+              "height": 432,
+              "title": "col 1; row 2"
+            }
+          ],
+          "floating_containers": [],
+          "number": 5,
+          "layout": "splitv"
+        }
+      ]
+    }
+  ]
+}
