@@ -633,7 +633,10 @@ class AnotherSwayrst:
                 else:
                     list_of_workspaces: list[types.Workspace] = []
                     for workspace in output.workspaces:
-                        if workspace.name in workspaces:
+                        if len(workspaces) > 0:
+                            if workspace.name in workspaces:
+                                list_of_workspaces.append(workspace)
+                        else:
                             list_of_workspaces.append(workspace)
                     if len(list_of_workspaces) > 0:
                         new_output = types.Output(

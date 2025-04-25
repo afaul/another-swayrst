@@ -15,7 +15,16 @@
             "justMyCode": true
         },
         {
-            "name": "save profile",
+            "name": "save profile all workspaces",
+            "type": "python",
+            "request": "launch",
+            "program": "src/another_swayrst/cli.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["save","x"]
+        },
+        {
+            "name": "save profile workspace 3 & 6",
             "type": "python",
             "request": "launch",
             "program": "src/another_swayrst/cli.py",
