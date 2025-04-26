@@ -1,11 +1,4 @@
 {
-    // Arguments passed in. Each argument is a separate string in the array.
-    "isort.args": [
-        "--profile",
-        "black"
-    ],
-    // Controls whether to run `isort` and report import sort issues.
-    "isort.check": true,
     // Analysis mode for diagnostics.
     //  - openFilesOnly: Analyzes and reports errors on only open files.
     //  - workspace: Analyzes and reports errors on all files in the workspace.

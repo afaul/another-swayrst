@@ -1,9 +1,3 @@
-[tool.pdm]
-distribution = true
-
-[tool.pdm.version]
-source = "scm"
-
 [project]
 name = "another-swayrst"
 dynamic = ["version"]
@@ -11,25 +5,35 @@ description = "A tool to restore window layout in swaywm"
 authors = [
     {name = "Alexander Faul", email = "kontakt-another-swayrst@afaul.de"},
 ]
+
 dependencies = [
     "click>=8.1.7",
     "i3ipc>=2.2.1",
     "psutil>=5.9.8",
     "pydantic>=2.5.3",
 ]
-requires-python = ">=3.11"
+
+requires-python = ">=3.13"
 readme = "README.md"
 license = {text = "GPL3"}
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: OS Independent",
 ]
 
+[tool.pdm.version]
+source = "scm"
+
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+]
 
 [project.scripts]
 another-swayrst = "another_swayrst.cli:main"
